@@ -64,6 +64,8 @@ The easiest way to use the tool is via the new local web interface.
     ```
 2.  Open your browser and navigate to: `http://localhost:5000`
 
+**Where are my downloads?** Files are saved to the `downloads/` folder inside the repository, under the subfolder name you choose (e.g. `downloads/<your-folder-name>/`). The base location can be changed via `storage.output_dir` in `config.yaml`.
+
 **Features:**
 - Search by keyword, URL, or UID
 - Select multiple items to download
@@ -140,6 +142,10 @@ A local web interface is available for easier searching and downloading.
     ```
 
 3.  Open your browser and navigate to: `http://localhost:5000`
+
+### Output Location
+
+Downloads from the web interface are saved to the `downloads/` folder inside the repository, in a subfolder named after the value you enter in the download dialog (for example, `downloads/AI_concepts_for_developers/`). To change the base directory, edit `storage.output_dir` in `config.yaml`.
 
 ## Configuration
 
