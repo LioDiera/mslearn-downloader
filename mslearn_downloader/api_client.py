@@ -213,10 +213,12 @@ class MSLearnAPIClient:
                 response.raise_for_status()
                 # MS Learn pages are UTF-8, but the response often omits a charset
                 # in the Content-Type header. Without it, requests defaults to
-                # ISO-8859-1 and mangles characters like the em dash (—) into
-                # mojibake (â). Force a correct decoding.
+                # ISO-8859-1 and mangles characters like the em dash (—) and curly
+                # apostrophe (’) into mojibake (â). apparent_encoding is only a
+                # heuristic and guesses inconsistently per page, so force UTF-8
+                # whenever the server doesn't explicitly declare a charset.
                 if 'charset' not in response.headers.get('Content-Type', '').lower():
-                    response.encoding = response.apparent_encoding or 'utf-8'
+                    response.encoding = 'utf-8'
                 return response.text
             except requests.exceptions.RequestException as e:
                 # If it's a 404, don't retry, just return empty (unless we want to be sure)
