@@ -2,7 +2,11 @@
 
 Download Microsoft Learn learning paths as HTML, Markdown, or PDF with all images and content included.
 
+> **Note:** This is a fork of [edunmore/mslearndownloader](https://github.com/edunmore/mslearndownloader), maintained by [LioDiera](https://github.com/LioDiera). See [Changes in this fork](#changes-in-this-fork) and [Credits](#credits).
+
 ## Motivation
+
+> The motivation below is from the original author ([edunmore](https://github.com/edunmore)).
 
 While Microsoft Learn allows downloading individual pages as PDFs, it lacks the ability to download entire courses or learning paths as a single, cohesive document.
 
@@ -305,6 +309,8 @@ Contributions are welcome! Feel free to:
 
 ## License
 
+This project is licensed under the **Apache License 2.0** (see [LICENSE](LICENSE)), inherited from the original project.
+
 This tool is for educational and personal use. Respect Microsoft Learn's terms of service.
 
 ## Disclaimer
@@ -316,12 +322,26 @@ This is an unofficial tool. Content downloaded from Microsoft Learn is subject t
 - [MS Learn Catalog API Documentation](https://learn.microsoft.com/en-us/training/support/catalog-api-developer-reference)
 - [Microsoft Learn](https://learn.microsoft.com/)
 
+## Changes in this fork
+
+Maintained by [LioDiera](https://github.com/LioDiera). Notable changes relative to the upstream project:
+
+- Fixed content scraping returning empty pages (request HTML instead of JSON via the `Accept` header).
+- Fixed character encoding so em/en dashes and other UTF-8 characters render correctly instead of mojibake.
+- Added the missing `templates/index.html` so the web UI loads.
+- Fixed the formatter calls and removed duplicate/unreachable code in the downloader.
+- Made `--delete-images` actually clean up the images folder after generation.
+- Named the Markdown output after the content title instead of `README.md`.
+- Synced `setup.py` dependencies, gated Flask debug mode behind `FLASK_DEBUG`, and other cleanup.
+
 ## Credits
 
-This project was architected by the author but implemented by Claude Sonnet, Codex, and Gemini code agents. No handwritten code in it.
+This project is a fork maintained by [LioDiera](https://github.com/LioDiera).
+
+Originally created by [edunmore](https://github.com/edunmore) ([edunmore/mslearndownloader](https://github.com/edunmore/mslearndownloader)) and implemented with the help of Claude, Codex, and Gemini code agents.
 
 ---
 
 **Version:** 1.0.0  
-**Author:** MS Learn Downloader Project  
-**Last Updated:** December 2025
+**Maintainer:** LioDiera (fork) — original by edunmore  
+**Last Updated:** June 2026

@@ -12,11 +12,6 @@ app = Flask(__name__)
 # Global state for jobs
 jobs = {}
 
-def get_downloader():
-    config = Config()
-    # Ensure we use the configured output directory or a default one
-    return MSLearnDownloader(config)
-
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -138,4 +133,5 @@ def status(job_id):
 if __name__ == '__main__':
     print("Starting MS Learn Downloader Web UI...")
     print("Open http://localhost:5000 in your browser")
-    app.run(debug=True, port=5000)
+    debug_mode = os.environ.get('FLASK_DEBUG', '').lower() in ('1', 'true', 'yes')
+    app.run(debug=debug_mode, port=5000)

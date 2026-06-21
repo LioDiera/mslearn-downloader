@@ -1,5 +1,6 @@
 """Command-line interface for MS Learn Downloader."""
 
+import sys
 import click
 from pathlib import Path
 from rich.console import Console
@@ -175,16 +176,16 @@ def main(url, uid, output_format, output_dir, config_file, no_images, delete_ima
         )
         
         if not success:
-            exit(1)
+            sys.exit(1)
             
     except KeyboardInterrupt:
         console.print("\n[yellow]Download interrupted by user[/yellow]")
-        exit(1)
+        sys.exit(1)
     except Exception as e:
         console.print(f"\n[red]Error: {e}[/red]")
         import traceback
         console.print(traceback.format_exc())
-        exit(1)
+        sys.exit(1)
 
 
 if __name__ == '__main__':

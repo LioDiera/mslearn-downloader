@@ -6,13 +6,12 @@ from datetime import datetime
 from rich.console import Console
 import base64
 import mimetypes
-import asyncio
 
 console = Console()
 
 
 class PDFFormatter:
-    """Format content as PDF using WeasyPrint."""
+    """Format content as PDF using Playwright (headless Chromium)."""
     
     def __init__(self, config):
         """Initialize PDF formatter with configuration."""

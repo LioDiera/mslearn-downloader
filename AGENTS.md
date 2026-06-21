@@ -72,4 +72,4 @@ python main.py --search "AZ-400"
 - **Windows**: `cairosvg` requires GTK3 to be in the PATH.
 
 ## Credits
-Architected by the author, implemented by AI agents (Claude Sonnet, Codex, Gemini).
+Forked and maintained by LioDiera (https://github.com/LioDiera). Originally architected by edunmore (https://github.com/edunmore/mslearndownloader), implemented by AI agents (Claude Sonnet, Codex, Gemini).

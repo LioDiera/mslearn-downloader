@@ -201,10 +201,22 @@ class MSLearnAPIClient:
     
     def fetch_content(self, url: str, silent: bool = False) -> str:
         """Fetch HTML content from a URL with retries."""
+        # The session default Accept is application/json (for the catalog API).
+        # MS Learn returns a stripped-down shell for HTML pages requested with
+        # that header, so explicitly request HTML for content fetches.
+        html_headers = {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        }
         for attempt in range(self.retry_attempts):
             try:
-                response = self.session.get(url, timeout=self.timeout)
+                response = self.session.get(url, timeout=self.timeout, headers=html_headers)
                 response.raise_for_status()
+                # MS Learn pages are UTF-8, but the response often omits a charset
+                # in the Content-Type header. Without it, requests defaults to
+                # ISO-8859-1 and mangles characters like the em dash (—) into
+                # mojibake (â). Force a correct decoding.
+                if 'charset' not in response.headers.get('Content-Type', '').lower():
+                    response.encoding = response.apparent_encoding or 'utf-8'
                 return response.text
             except requests.exceptions.RequestException as e:
                 # If it's a 404, don't retry, just return empty (unless we want to be sure)

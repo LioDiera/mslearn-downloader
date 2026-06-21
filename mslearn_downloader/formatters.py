@@ -237,8 +237,8 @@ class MarkdownFormatter(BaseFormatter):
         output_path = Path(output_path)
         output_path.mkdir(parents=True, exist_ok=True)
         
-        # Generate main markdown file
-        md_file = output_path / "README.md"
+        # Generate main markdown file, named after the content title
+        md_file = output_path / f"{self._sanitize_filename(learning_path.get('title', 'content'))}.md"
         
         md_content = self._generate_markdown(learning_path, modules_content)
         
@@ -246,6 +246,13 @@ class MarkdownFormatter(BaseFormatter):
             f.write(md_content)
         
         console.print(f"[green]Markdown saved to: {md_file}[/green]")
+    
+    def _sanitize_filename(self, filename: str) -> str:
+        """Sanitize a title for safe use as a filename."""
+        import re
+        filename = re.sub(r'[<>:"/\\|?*]', '', filename)
+        filename = filename.replace(' ', '_')
+        return filename[:100] or 'content'
     
     def _generate_markdown(self, learning_path: Dict, modules_content: List[Dict]) -> str:
         """Generate complete Markdown document."""

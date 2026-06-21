@@ -38,3 +38,9 @@ cache/
 *.log
 *.pdf
 *.html
+
+# ...but keep application templates/static assets
+!templates/
+!templates/**
+!static/
+!static/**

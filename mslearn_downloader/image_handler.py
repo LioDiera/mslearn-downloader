@@ -91,7 +91,7 @@ class ImageHandler:
         original_name = Path(path).stem
         
         # Create hash of URL for uniqueness
-        url_hash = hashlib.md5(url.encode()).hexdigest()[:8]
+        url_hash = hashlib.md5(url.encode(), usedforsecurity=False).hexdigest()[:8]
         
         # Combine original name with hash
         if original_name:

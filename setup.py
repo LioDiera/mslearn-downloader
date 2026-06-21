@@ -8,11 +8,14 @@ setup(
         "requests",
         "beautifulsoup4",
         "lxml",
+        "markdownify",
         "click",
         "rich",
         "pyyaml",
         "playwright",
+        "pillow",
         "cairosvg",
+        "flask",
     ],
     entry_points={
         "console_scripts": [

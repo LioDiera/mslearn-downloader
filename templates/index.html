@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MS Learn Downloader</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-primary mb-4">
+        <div class="container">
+            <span class="navbar-brand mb-0 h1">
+                <i class="fas fa-graduation-cap me-2"></i>MS Learn Downloader
+            </span>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Search Card -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Search Microsoft Learn</h5>
+                <form id="searchForm">
+                    <div class="input-group">
+                        <input type="text" id="searchInput" class="form-control form-control-lg"
+                               placeholder="Search by keyword (e.g. AZ-400) or paste a learn.microsoft.com URL" autofocus>
+                        <button class="btn btn-primary btn-lg" type="submit">
+                            <i class="fas fa-search me-1"></i> Search
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="text-center my-5 d-none">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Searching...</p>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsSection" class="card shadow-sm d-none">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span id="resultsCount" class="fw-bold">Results</span>
+                <div>
+                    <span class="text-muted me-3"><span id="selectedCount">0</span> selected</span>
+                    <button id="downloadBtn" class="btn btn-success" disabled>
+                        <i class="fas fa-download me-1"></i> Download Selected
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">
+                                    <input type="checkbox" id="selectAll" class="form-check-input">
+                                </th>
+                                <th style="width: 90px;">Type</th>
+                                <th>Title</th>
+                                <th style="width: 100px;">Duration</th>
+                                <th style="width: 60px;">Link</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Download Modal -->
+    <div class="modal fade" id="downloadModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-download me-2"></i>Download</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Config Step -->
+                    <div id="downloadConfigStep">
+                        <div class="mb-3">
+                            <label for="downloadPathInput" class="form-label">Folder Name</label>
+                            <input type="text" id="downloadPathInput" class="form-control" value="download">
+                            <div class="form-text">Content is saved under this folder in your downloads directory.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="outputFormatSelect" class="form-label">Output Format</label>
+                            <select id="outputFormatSelect" class="form-select">
+                                <option value="pdf" selected>PDF</option>
+                                <option value="markdown">Markdown</option>
+                                <option value="html">HTML</option>
+                            </select>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input type="checkbox" id="deleteImagesCheck" class="form-check-input">
+                            <label for="deleteImagesCheck" class="form-check-label">Delete downloaded images after generation</label>
+                        </div>
+                        <div class="text-end">
+                            <button id="startDownloadBtn" class="btn btn-success">
+                                <i class="fas fa-play me-1"></i> Start Download
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Progress Step -->
+                    <div id="downloadProgressStep" class="d-none">
+                        <div class="text-center mb-3">
+                            <h5 id="downloadStatus">Starting...</h5>
+                            <p id="downloadMessage" class="text-muted mb-0">Initializing...</p>
+                        </div>
+                        <div class="progress" style="height: 24px;">
+                            <div id="progressBar"
+                                 class="progress-bar progress-bar-striped progress-bar-animated"
+                                 role="progressbar" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="downloadFooter" class="modal-footer d-none">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

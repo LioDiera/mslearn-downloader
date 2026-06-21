@@ -75,28 +75,6 @@ class MSLearnDownloader:
         console.print(f"Location: {course_output_dir}")
         return success_count > 0
 
-    def download_learning_path(self, learning_path_uid: str = None, learning_path_url: str = None,
-                               output_format: str = 'pdf', output_dir: str = None) -> bool:
-        """Download a learning path by UID or URL."""
-        
-        # Check if it's a course URL
-        if learning_path_url and '/courses/' in learning_path_url:
-            return self.download_course(learning_path_url, output_format, output_dir)
-        
-        # Get learning path metadata
-        if learning_path_uid:
-            learning_path = self.api_client.get_learning_path_by_uid(learning_path_uid)
-        elif learning_path_url:
-            learning_path = self.api_client.get_learning_path_from_url(learning_path_url)
-        else:
-            console.print("[red]Please provide either a UID or URL[/red]")
-            return False
-        
-        if not learning_path:
-            return False
-        
-        console.print(f"[green]Found learning path: {learning_path.get('title')}[/green]")
-        console.print(f"Modules: {learning_path.get('number_of_children', 0)}")
     def download_module(self, module_uid: str, output_format: str, output_dir: str) -> bool:
         """Download a single module by UID."""
         # Fetch module details
@@ -172,16 +150,29 @@ class MSLearnDownloader:
         formats = output_format.split(',') if output_format != 'all' else ['html', 'markdown', 'pdf']
         
         if 'html' in formats:
-            formatter = HTMLFormatter(output_path)
-            formatter.format(learning_path, modules_content)
+            formatter = HTMLFormatter(self.config)
+            formatter.format(learning_path, modules_content, output_path)
             
         if 'markdown' in formats or 'md' in formats:
-            formatter = MarkdownFormatter(output_path)
-            formatter.format(learning_path, modules_content)
+            formatter = MarkdownFormatter(self.config)
+            formatter.format(learning_path, modules_content, output_path)
             
         if 'pdf' in formats:
             formatter = PDFFormatter(self.config)
-            formatter.format(learning_path, modules_content, output_path)
+            images_dir = output_path / "images"
+            formatter.format(
+                learning_path,
+                modules_content,
+                output_path,
+                images_dir if images_dir.exists() else None,
+            )
+
+        # Cleanup downloaded images if requested (after all formats are generated)
+        if self.config.get('cleanup.delete_images', False):
+            images_dir = output_path / "images"
+            if images_dir.exists():
+                console.print("[dim]Cleaning up images folder...[/dim]")
+                shutil.rmtree(images_dir)
 
     def download_learning_path(self, learning_path_uid: str = None, learning_path_url: str = None,
                                output_format: str = 'pdf', output_dir: str = None) -> bool:
@@ -243,28 +234,4 @@ class MSLearnDownloader:
         self._process_images(all_images, modules_content, output_dir)
         self._save_output(learning_path, modules_content, output_format, output_dir)
         
-        return True
-        
-        for fmt in formats:
-            fmt = fmt.strip().lower()
-            if fmt == 'html':
-                formatter = HTMLFormatter(self.config)
-                formatter.format(learning_path, modules_content, output_path)
-            elif fmt == 'markdown' or fmt == 'md':
-                formatter = MarkdownFormatter(self.config)
-                formatter.format(learning_path, modules_content, output_path)
-            elif fmt == 'pdf':
-                formatter = PDFFormatter(self.config)
-                images_dir = output_path / "images" if image_url_mapping else None
-                formatter.format(learning_path, modules_content, output_path, images_dir)
-        
-        # Cleanup images if requested
-        if self.config.get('cleanup.delete_images', False) and image_url_mapping:
-            images_dir = output_path / "images"
-            if images_dir.exists():
-                console.print("[dim]Cleaning up images folder...[/dim]")
-                shutil.rmtree(images_dir)
-
-        console.print()
-        console.print("[bold green]Download completed successfully![/bold green]")
         return True
