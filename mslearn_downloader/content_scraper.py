@@ -190,6 +190,11 @@ class ContentScraper:
         if not quiz_form:
             return
 
+        def normalized_text(node) -> str:
+            # Use strip=False so whitespace around inline elements (e.g. <em>)
+            # is preserved, then collapse runs of whitespace into single spaces.
+            return re.sub(r'\s+', ' ', node.get_text()).strip()
+
         # Create a container for the formatted quiz
         quiz_div = soup.new_tag('div')
         quiz_div['class'] = 'formatted-quiz'
@@ -203,7 +208,7 @@ class ContentScraper:
                 
             # Get the question text (ignoring the number span if possible)
             q_text_p = q_title_div.select_one('p')
-            q_text = q_text_p.get_text(strip=True) if q_text_p else q_title_div.get_text(strip=True)
+            q_text = normalized_text(q_text_p) if q_text_p else normalized_text(q_title_div)
             
             # Create question header
             q_header = soup.new_tag('h3')
@@ -216,7 +221,7 @@ class ContentScraper:
             for choice in choices:
                 choice_text_div = choice.select_one('.radio-label-text')
                 if choice_text_div:
-                    choice_text = choice_text_div.get_text(strip=True)
+                    choice_text = normalized_text(choice_text_div)
                     li = soup.new_tag('li')
                     li.string = choice_text
                     answers_ul.append(li)
