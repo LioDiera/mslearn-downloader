@@ -335,7 +335,8 @@ This is an unofficial tool. Content downloaded from Microsoft Learn is subject t
 Maintained by [LioDiera](https://github.com/LioDiera). Notable changes relative to the upstream project:
 
 - Fixed content scraping returning empty pages (request HTML instead of JSON via the `Accept` header).
-- Fixed character encoding so em/en dashes and other UTF-8 characters render correctly instead of mojibake.
+- Fixed character encoding so em/en dashes, curly apostrophes/quotes, and other UTF-8 characters render correctly instead of mojibake.
+- Fixed missing spaces around italics and other inline formatting in quiz question/answer text.
 - Added the missing `templates/index.html` so the web UI loads.
 - Fixed the formatter calls and removed duplicate/unreachable code in the downloader.
 - Made `--delete-images` actually clean up the images folder after generation.
