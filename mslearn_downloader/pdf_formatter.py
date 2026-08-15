@@ -41,9 +41,16 @@ class PDFFormatter:
             subprocess.run(['playwright', 'install', 'chromium'], check=True)
             from playwright.sync_api import sync_playwright
         
+        try:
+            from pypdf import PdfWriter
+        except ImportError:
+            console.print("[yellow]pypdf not installed. Installing...[/yellow]")
+            import subprocess
+            subprocess.run(['pip', 'install', 'pypdf'], check=True)
+            from pypdf import PdfWriter
+        
         output_path = Path(output_path)
         
-        # If output_path is a directory, create a PDF file in it
         if output_path.is_dir():
             safe_title = self._sanitize_filename(learning_path.get('title', 'content'))
             pdf_file = output_path / f"{safe_title}.pdf"
@@ -51,48 +58,66 @@ class PDFFormatter:
             pdf_file = output_path
             pdf_file.parent.mkdir(parents=True, exist_ok=True)
         
-        # Generate HTML with local image references (not base64)
-        html_content = self._generate_pdf_html(learning_path, modules_content, images_dir)
+        part_pdfs = []
         
-        # Save HTML temporarily
-        html_file = pdf_file.parent / f"{pdf_file.stem}_temp.html"
-        with open(html_file, 'w', encoding='utf-8') as f:
-            f.write(html_content)
-        
-        # Generate PDF using Playwright (Chrome headless)
         try:
             with sync_playwright() as p:
                 browser = p.chromium.launch()
-                page = browser.new_page()
-                page.goto(f'file:///{html_file.as_posix()}')
-                page.pdf(
-                    path=str(pdf_file),
-                    format='A4',
-                    print_background=True,
-                    margin={'top': '20mm', 'right': '15mm', 'bottom': '20mm', 'left': '15mm'}
-                )
+                
+                # Cover page + TOC rendered without a footer
+                cover_toc_html = self._generate_cover_toc_html(learning_path, modules_content)
+                cover_toc_pdf = pdf_file.parent / f"{pdf_file.stem}_part_cover.pdf"
+                self._render_html_to_pdf(browser, cover_toc_html, cover_toc_pdf)
+                if cover_toc_pdf.exists():
+                    part_pdfs.append(cover_toc_pdf)
+                
+                # One PDF per unit, each with a footer showing module & unit name
+                for i, module_data in enumerate(modules_content, 1):
+                    module = module_data['metadata']
+                    module_title = module.get('title', 'Untitled')
+                    
+                    for j, unit_data in enumerate(module_data.get('content', []), 1):
+                        unit = unit_data['metadata']
+                        unit_title = unit.get('title', 'Untitled')
+                        footer_text = f"Module {i}: {module_title}  \u00b7  Unit {j}: {unit_title}"
+                        
+                        unit_html = self._generate_unit_html(
+                            i, module_title, module.get('summary', ''),
+                            j, unit_title, unit_data.get('html', ''),
+                            images_dir, is_first_unit=(j == 1)
+                        )
+                        unit_pdf = pdf_file.parent / f"{pdf_file.stem}_part_m{i}_u{j}.pdf"
+                        self._render_html_to_pdf(browser, unit_html, unit_pdf, footer_text=footer_text)
+                        if unit_pdf.exists():
+                            part_pdfs.append(unit_pdf)
+                
                 browser.close()
             
-            # Clean up temp HTML
-            html_file.unlink()
+            # Merge all part PDFs into the final output
+            writer = PdfWriter()
+            for part in part_pdfs:
+                writer.append(str(part))
+            with open(pdf_file, 'wb') as f:
+                writer.write(f)
             console.print(f"[green]PDF saved to: {pdf_file}[/green]")
+        
         except Exception as e:
             console.print(f"[red]Failed to generate PDF: {e}[/red]")
-            if html_file.exists():
-                console.print(f"[yellow]Temp HTML kept for debugging: {html_file}[/yellow]")
+            raise
+        finally:
+            for part in part_pdfs:
+                try:
+                    part.unlink(missing_ok=True)
+                except Exception:
+                    pass
     
-    def _generate_pdf_html(self, learning_path: Dict, modules_content: List[Dict], images_dir: Path) -> str:
-        """Generate HTML optimized for PDF conversion."""
+    def _generate_cover_toc_html(self, learning_path: Dict, modules_content: List[Dict]) -> str:
+        """Generate HTML for the cover page and table of contents."""
         title = learning_path.get('title', 'MS Learn Content')
         summary = learning_path.get('summary', '')
-        
-        # Build TOC
         toc_html = self._generate_toc(modules_content)
         
-        # Build content with embedded images
-        content_html = self._generate_content(modules_content, images_dir)
-        
-        html = f"""<!DOCTYPE html>
+        return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -111,23 +136,12 @@ class PDFFormatter:
             <p>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
         </div>
     </div>
-    
     <div class="toc-page">
         <h1 class="toc-title">Table of Contents</h1>
         {toc_html}
     </div>
-    
-    <div class="content">
-        {content_html}
-    </div>
-    
-    <div class="footer-info">
-        <p>Generated by MS Learn Downloader</p>
-        <p>Original: {learning_path.get('url', '')}</p>
-    </div>
 </body>
 </html>"""
-        return html
     
     def _generate_toc(self, modules_content: List[Dict]) -> str:
         """Generate table of contents for PDF."""
@@ -149,34 +163,78 @@ class PDFFormatter:
         toc.append('</ol>')
         return '\n'.join(toc)
     
-    def _generate_content(self, modules_content: List[Dict], images_dir: Path) -> str:
-        """Generate content for PDF with local image paths (not base64)."""
-        content = []
+    def _generate_unit_html(self, module_num: int, module_title: str, module_summary: str,
+                             unit_num: int, unit_title: str, unit_html_content: str,
+                             images_dir: Path, is_first_unit: bool = False) -> str:
+        """Generate self-contained HTML for a single unit."""
+        module_header = ''
+        if is_first_unit:
+            module_header = (
+                f'<div class="module-header">'
+                f'<h1 class="module-title">Module {module_num}: {module_title}</h1>'
+                f'<div class="module-summary">{module_summary}</div>'
+                f'</div>'
+            )
         
-        for i, module_data in enumerate(modules_content, 1):
-            module = module_data['metadata']
-            
-            content.append(f'<div class="module" data-bookmark="Module {i}: {module.get("title", "Untitled")}">')
-            content.append(f'<h1 class="module-title">Module {i}: {module.get("title", "Untitled")}</h1>')
-            content.append(f'<div class="module-summary">{module.get("summary", "")}</div>')
-            
-            for j, unit_data in enumerate(module_data['content'], 1):
-                unit = unit_data['metadata']
-                
-                content.append(f'<div class="unit" data-bookmark="Unit {j}: {unit.get("title", "Untitled")}">')
-                content.append(f'<h2 class="unit-title">Unit {j}: {unit.get("title", "Untitled")}</h2>')
-                
-                # Use local file paths for images (Playwright will load them)
-                unit_html = unit_data.get('html', '')
-                if images_dir:
-                    unit_html = self._fix_image_paths_for_local(unit_html, images_dir)
-                
-                content.append(unit_html)
-                content.append('</div>')
-            
-            content.append('</div>')
+        if images_dir:
+            unit_html_content = self._fix_image_paths_for_local(unit_html_content, images_dir)
         
-        return '\n'.join(content)
+        return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Module {module_num}: {module_title}  \u00b7  Unit {unit_num}: {unit_title}</title>
+    <style>
+    {self._get_pdf_css()}
+    </style>
+</head>
+<body>
+    {module_header}
+    <div class="unit">
+        <h2 class="unit-title">Unit {unit_num}: {unit_title}</h2>
+        {unit_html_content}
+    </div>
+</body>
+</html>"""
+    
+    def _render_html_to_pdf(self, browser, html_content: str, output_path: Path, footer_text: str = '') -> None:
+        """Render an HTML string to PDF using an already-open Playwright browser."""
+        html_file = output_path.parent / f"{output_path.stem}_temp.html"
+        try:
+            with open(html_file, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            
+            page = browser.new_page()
+            page.goto(f'file:///{html_file.as_posix()}')
+            
+            use_footer = bool(footer_text)
+            pdf_kwargs = dict(
+                path=str(output_path),
+                format='A4',
+                print_background=True,
+                margin={
+                    'top': '20mm', 'right': '15mm',
+                    'bottom': '30mm' if use_footer else '20mm',
+                    'left': '15mm'
+                },
+                display_header_footer=use_footer,
+            )
+            if use_footer:
+                pdf_kwargs['header_template'] = '<div></div>'
+                pdf_kwargs['footer_template'] = (
+                    '<div style="font-size: 8px; color: #666; width: 100%; text-align: center; '
+                    'font-family: Segoe UI, Arial, sans-serif; padding: 0 15mm;">'
+                    f'{footer_text}'
+                    '&nbsp;&nbsp;&mdash;&nbsp;&nbsp;'
+                    'Page <span class="pageNumber"></span> of <span class="totalPages"></span>'
+                    '</div>'
+                )
+            
+            page.pdf(**pdf_kwargs)
+            page.close()
+        finally:
+            if html_file.exists():
+                html_file.unlink()
     
     def _fix_image_paths_for_local(self, html_content: str, images_dir: Path) -> str:
         """Embed images as data URIs (convert SVG to PNG first for reliability)."""
