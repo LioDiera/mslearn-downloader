@@ -21,7 +21,8 @@ class PDFFormatter:
         self.font_size = config.get('pdf.font_size', '11pt')
         self.include_bookmarks = config.get('pdf.include_bookmarks', True)
     
-    def format(self, learning_path: Dict, modules_content: List[Dict], output_path: Path, images_dir: Path = None):
+    def format(self, learning_path: Dict, modules_content: List[Dict], output_path: Path,
+               images_dir: Path = None, filename_prefix: Optional[str] = None):
         """Generate PDF output."""
         console.print("[cyan]Generating PDF output...[/cyan]")
         
@@ -53,7 +54,8 @@ class PDFFormatter:
         
         if output_path.is_dir():
             safe_title = self._sanitize_filename(learning_path.get('title', 'content'))
-            pdf_file = output_path / f"{safe_title}.pdf"
+            filename = f"{filename_prefix} - {safe_title}" if filename_prefix else safe_title
+            pdf_file = output_path / f"{filename}.pdf"
         else:
             pdf_file = output_path
             pdf_file.parent.mkdir(parents=True, exist_ok=True)

@@ -57,12 +57,14 @@ def run_download_job(job_id, items, output_dir, output_format, delete_images):
     
     total = len(items)
     success_count = 0
+    number_width = max(2, len(str(total)))
     
     try:
         for i, item in enumerate(items, 1):
             uid = item.get('uid')
             item_type = item.get('type')
             title = item.get('title')
+            filename_prefix = f"{i:0{number_width}d}"
             
             job['current_item'] = title
             job['progress'] = int((i - 1) / total * 100)
@@ -71,11 +73,20 @@ def run_download_job(job_id, items, output_dir, output_format, delete_images):
             success = False
             try:
                 if item_type == 'course':
-                    success = downloader.download_course_by_uid(uid, output_format, output_dir)
+                    success = downloader.download_course_by_uid(
+                        uid, output_format, output_dir, filename_prefix=filename_prefix
+                    )
                 elif item_type == 'module':
-                    success = downloader.download_module(uid, output_format, output_dir)
+                    success = downloader.download_module(
+                        uid, output_format, output_dir, filename_prefix=filename_prefix
+                    )
                 else:
-                    success = downloader.download_learning_path(learning_path_uid=uid, output_format=output_format, output_dir=output_dir)
+                    success = downloader.download_learning_path(
+                        learning_path_uid=uid,
+                        output_format=output_format,
+                        output_dir=output_dir,
+                        filename_prefix=filename_prefix,
+                    )
             except Exception as e:
                 print(f"Error downloading {uid}: {e}")
             

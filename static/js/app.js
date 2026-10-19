@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultsCountHeader = document.getElementById('resultsCount');
     
     let currentResults = [];
+    const selectedItems = new Map();
     let downloadModal;
 
     // Initialize Modal
@@ -66,11 +67,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
             row.innerHTML = `
                 <td>
-                    <input type="checkbox" class="form-check-input item-checkbox" data-index="${index}" value="${item.uid}">
+                    <input type="checkbox" class="form-check-input item-checkbox" data-index="${index}" value="${item.uid}" ${selectedItems.has(selectionKey(item)) ? 'checked' : ''}>
                 </td>
                 <td><span class="badge ${badgeClass}">${typeLabel}</span></td>
                 <td>
-                    <div class="fw-bold">${item.title}</div>
+                    <div class="fw-bold">
+                        <span class="badge bg-secondary me-2 selection-order d-none"></span>${item.title}
+                    </div>
                     <small class="text-muted">${item.uid}</small>
                 </td>
                 <td>${duration}</td>
@@ -85,36 +88,68 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Re-attach event listeners for checkboxes
         document.querySelectorAll('.item-checkbox').forEach(cb => {
-            cb.addEventListener('change', updateSelectionState);
+            cb.addEventListener('change', function() {
+                const item = currentResults[this.dataset.index];
+                const key = selectionKey(item);
+                if (this.checked) {
+                    selectedItems.set(key, item);
+                } else {
+                    selectedItems.delete(key);
+                }
+                updateSelectionState();
+            });
         });
+        updateSelectionState();
     }
 
     // Select All Handler
     selectAllCheckbox.addEventListener('change', function() {
-        const checkboxes = document.querySelectorAll('.item-checkbox');
-        checkboxes.forEach(cb => cb.checked = this.checked);
+        currentResults.forEach(item => {
+            const key = selectionKey(item);
+            if (this.checked) {
+                selectedItems.set(key, item);
+            } else {
+                selectedItems.delete(key);
+            }
+        });
+        document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = this.checked);
         updateSelectionState();
     });
 
     // Update Selection UI
     function updateSelectionState() {
-        const selected = document.querySelectorAll('.item-checkbox:checked');
-        const count = selected.length;
-        selectedCountSpan.textContent = count;
-        downloadBtn.disabled = count === 0;
+        selectedCountSpan.textContent = selectedItems.size;
+        downloadBtn.disabled = selectedItems.size === 0;
+
+        const selectionOrder = new Map(
+            Array.from(selectedItems.keys(), (key, index) => [key, index + 1])
+        );
+        document.querySelectorAll('.item-checkbox').forEach(checkbox => {
+            const item = currentResults[checkbox.dataset.index];
+            const orderBadge = checkbox.closest('tr').querySelector('.selection-order');
+            const order = selectionOrder.get(selectionKey(item));
+            orderBadge.textContent = order || '';
+            orderBadge.classList.toggle('d-none', !order);
+        });
         
-        // Update "Select All" state
         const allCheckboxes = document.querySelectorAll('.item-checkbox');
         if (allCheckboxes.length > 0) {
-            selectAllCheckbox.checked = selected.length === allCheckboxes.length;
-            selectAllCheckbox.indeterminate = selected.length > 0 && selected.length < allCheckboxes.length;
+            const selectedVisibleCount = document.querySelectorAll('.item-checkbox:checked').length;
+            selectAllCheckbox.checked = selectedVisibleCount === allCheckboxes.length;
+            selectAllCheckbox.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < allCheckboxes.length;
+        } else {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
         }
+    }
+
+    function selectionKey(item) {
+        return `${item.type || ''}:${item.uid}`;
     }
 
     // Download Handler - Open Modal
     downloadBtn.addEventListener('click', function() {
-        const selectedCheckboxes = document.querySelectorAll('.item-checkbox:checked');
-        if (selectedCheckboxes.length === 0) return;
+        if (selectedItems.size === 0) return;
 
         // Pre-fill folder name with search term or first item title
         const searchTerm = searchInput.value.trim();
@@ -131,11 +166,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Start Download Handler
     document.getElementById('startDownloadBtn').addEventListener('click', async function() {
-        const selectedCheckboxes = document.querySelectorAll('.item-checkbox:checked');
-        const itemsToDownload = Array.from(selectedCheckboxes).map(cb => {
-            const index = cb.dataset.index;
-            return currentResults[index];
-        });
+        const itemsToDownload = Array.from(selectedItems.values());
+        if (itemsToDownload.length === 0) return;
 
         const folderName = document.getElementById('downloadPathInput').value.trim() || 'download';
         const outputFormat = document.getElementById('outputFormatSelect').value;
@@ -160,6 +192,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const data = await response.json();
             if (data.job_id) {
+                selectedItems.clear();
+                document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = false);
+                updateSelectionState();
                 pollStatus(data.job_id);
             } else {
                 throw new Error(data.error || 'Failed to start download');

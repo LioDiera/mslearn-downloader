@@ -25,7 +25,8 @@ class MSLearnDownloader:
         self.content_scraper = ContentScraper(self.api_client)
         self.image_handler = ImageHandler(self.api_client, config)
     
-    def download_course(self, course_url: str, output_format: str, output_dir: str) -> bool:
+    def download_course(self, course_url: str, output_format: str, output_dir: str,
+                        filename_prefix: Optional[str] = None) -> bool:
         """Download all learning paths in a course."""
         learning_path_uids = self.content_scraper.scrape_course_learning_path_uids(course_url)
         
@@ -33,9 +34,16 @@ class MSLearnDownloader:
             console.print("[red]No learning paths found in this course[/red]")
             return False
             
-        return self._download_course_paths(learning_path_uids, course_url.rstrip('/').split('/')[-1], output_format, output_dir)
+        return self._download_course_paths(
+            learning_path_uids,
+            course_url.rstrip('/').split('/')[-1],
+            output_format,
+            output_dir,
+            filename_prefix,
+        )
 
-    def download_course_by_uid(self, course_uid: str, output_format: str, output_dir: str) -> bool:
+    def download_course_by_uid(self, course_uid: str, output_format: str, output_dir: str,
+                               filename_prefix: Optional[str] = None) -> bool:
         """Download a course by its UID."""
         # Fetch course details
         data = self.api_client.get_catalog(type='courses', uid=course_uid)
@@ -54,9 +62,13 @@ class MSLearnDownloader:
             console.print("[red]No learning paths found in this course[/red]")
             return False
             
-        return self._download_course_paths(learning_path_uids, course_uid, output_format, output_dir)
+        return self._download_course_paths(
+            learning_path_uids, course_uid, output_format, output_dir, filename_prefix
+        )
 
-    def _download_course_paths(self, learning_path_uids: List[str], course_id: str, output_format: str, output_dir: str) -> bool:
+    def _download_course_paths(self, learning_path_uids: List[str], course_id: str,
+                               output_format: str, output_dir: str,
+                               filename_prefix: Optional[str] = None) -> bool:
         """Helper to download a list of learning paths for a course."""
         console.print(f"[green]Found {len(learning_path_uids)} learning paths in course[/green]")
         
@@ -68,14 +80,20 @@ class MSLearnDownloader:
         for i, uid in enumerate(learning_path_uids, 1):
             console.print(f"\n[bold]Processing learning path {i}/{len(learning_path_uids)}: {uid}[/bold]")
             # Recursively call download_learning_path for each path
-            if self.download_learning_path(learning_path_uid=uid, output_format=output_format, output_dir=course_output_dir):
+            if self.download_learning_path(
+                learning_path_uid=uid,
+                output_format=output_format,
+                output_dir=course_output_dir,
+                filename_prefix=filename_prefix,
+            ):
                 success_count += 1
                 
         console.print(f"\n[green]Course download complete. {success_count}/{len(learning_path_uids)} learning paths downloaded successfully.[/green]")
         console.print(f"Location: {course_output_dir}")
         return success_count > 0
 
-    def download_module(self, module_uid: str, output_format: str, output_dir: str) -> bool:
+    def download_module(self, module_uid: str, output_format: str, output_dir: str,
+                        filename_prefix: Optional[str] = None) -> bool:
         """Download a single module by UID."""
         # Fetch module details
         data = self.api_client.get_catalog(type='modules', uid=module_uid)
@@ -125,7 +143,7 @@ class MSLearnDownloader:
             'modules': [module]
         }
         
-        self._save_output(dummy_lp, modules_content, output_format, output_dir)
+        self._save_output(dummy_lp, modules_content, output_format, output_dir, filename_prefix)
         return True
 
     def _process_images(self, all_images, modules_content, output_dir):
@@ -144,7 +162,8 @@ class MSLearnDownloader:
                         images_subdir='images'
                     )
 
-    def _save_output(self, learning_path, modules_content, output_format, output_dir):
+    def _save_output(self, learning_path, modules_content, output_format, output_dir,
+                     filename_prefix: Optional[str] = None):
         """Helper to save output in requested formats."""
         output_path = Path(output_dir or self.config.get('storage.output_dir', './downloads'))
         formats = output_format.split(',') if output_format != 'all' else ['html', 'markdown', 'pdf']
@@ -165,6 +184,7 @@ class MSLearnDownloader:
                 modules_content,
                 output_path,
                 images_dir if images_dir.exists() else None,
+                filename_prefix,
             )
 
         # Cleanup downloaded images if requested (after all formats are generated)
@@ -175,12 +195,15 @@ class MSLearnDownloader:
                 shutil.rmtree(images_dir)
 
     def download_learning_path(self, learning_path_uid: str = None, learning_path_url: str = None,
-                               output_format: str = 'pdf', output_dir: str = None) -> bool:
+                               output_format: str = 'pdf', output_dir: str = None,
+                               filename_prefix: Optional[str] = None) -> bool:
         """Download a learning path by UID or URL."""
         
         # Check if it's a course URL
         if learning_path_url and '/courses/' in learning_path_url:
-            return self.download_course(learning_path_url, output_format, output_dir)
+            return self.download_course(
+                learning_path_url, output_format, output_dir, filename_prefix
+            )
         
         # Get learning path metadata
         if learning_path_uid:
@@ -232,6 +255,8 @@ class MSLearnDownloader:
         
         # Download images and save output
         self._process_images(all_images, modules_content, output_dir)
-        self._save_output(learning_path, modules_content, output_format, output_dir)
+        self._save_output(
+            learning_path, modules_content, output_format, output_dir, filename_prefix
+        )
         
         return True
