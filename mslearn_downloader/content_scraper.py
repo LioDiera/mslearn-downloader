@@ -131,6 +131,9 @@ class ContentScraper:
         if not main_content:
             console.print(f"[yellow]Could not find main content for unit: {unit_url}")
 
+        if main_content:
+            self._absolutize_links(main_content, unit_url)
+
         images = self._extract_images(main_content, unit_url) if main_content else []
         html_fragment = str(main_content) if main_content else ''
         text_fragment = main_content.get_text(strip=False) if main_content else ''
@@ -258,6 +261,20 @@ class ContentScraper:
         for tag in content.find_all(['script', 'style']):
             tag.decompose()
     
+    def _absolutize_links(self, content: BeautifulSoup, base_url: str):
+        """Resolve relative anchor hrefs against the page URL.
+
+        Without this, links such as /en-us/... resolve against file:/// when the
+        content is rendered from a local file (PDF) or opened offline (HTML).
+        """
+        for a in content.find_all('a', href=True):
+            href = a['href'].strip()
+            if not href or href.startswith('#'):
+                continue
+            if urlparse(href).scheme in ('mailto', 'tel', 'javascript', 'data'):
+                continue
+            a['href'] = urljoin(base_url, href)
+
     def _extract_images(self, soup: BeautifulSoup, base_url: str) -> List[Dict]:
         """Extract all images from the content."""
         images = []
