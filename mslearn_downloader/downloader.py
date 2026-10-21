@@ -107,7 +107,7 @@ class MSLearnDownloader:
         for i, module in enumerate(modules, 1):
             console.print(f"\n[bold]Processing module {i}/{len(modules)}: {module['title']}[/bold]")
             number = f"{i:0{width}d}"
-            prefix = f"{filename_prefix}.{number}" if filename_prefix else number
+            prefix = number
             try:
                 if self.download_module(module['uid'], output_format, output_dir, filename_prefix=prefix):
                     success_count += 1

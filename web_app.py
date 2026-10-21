@@ -86,7 +86,7 @@ def run_download_job(job_id, items, output_dir, output_format, delete_images):
             try:
                 if item_type == 'collection':
                     success = downloader.download_renewal_collection(
-                        uid, output_format, output_dir, filename_prefix=filename_prefix
+                        uid, output_format, output_dir
                     )
                 elif item_type == 'course':
                     success = downloader.download_course_by_uid(
