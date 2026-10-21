@@ -93,7 +93,7 @@ class MSLearnDownloader:
         return success_count > 0
 
     def download_exam(self, url: str, output_format: str, output_dir: str) -> bool:
-        """Download every learning path in a certification exam's study guide, in page order."""
+        """Download an exam's study guide: one subfolder per learning path, one file per module."""
         exam = self.api_client.get_exam_learning_paths(url)
         if not exam:
             return False
@@ -105,12 +105,10 @@ class MSLearnDownloader:
         success_count = 0
         for i, path in enumerate(paths, 1):
             console.print(f"\n[bold]Processing learning path {i}/{len(paths)}: {path['title']}[/bold]")
+            folder = f"{i:0{width}d} - {self._safe_folder_name(path['title'])}"
             try:
-                if self.download_learning_path(
-                    learning_path_uid=path['uid'],
-                    output_format=output_format,
-                    output_dir=output_dir,
-                    filename_prefix=f"{i:0{width}d}",
+                if self.download_learning_path_modules(
+                    path['uid'], output_format, str(Path(output_dir) / folder)
                 ):
                     success_count += 1
             except Exception as e:
@@ -118,6 +116,39 @@ class MSLearnDownloader:
 
         console.print(f"\n[green]Exam download complete. {success_count}/{len(paths)} learning paths downloaded successfully.[/green]")
         return success_count > 0
+
+    def download_learning_path_modules(self, learning_path_uid: str, output_format: str,
+                                       output_dir: str) -> bool:
+        """Download each module of a learning path as its own numbered file in output_dir."""
+        learning_path = self.api_client.get_learning_path_by_uid(learning_path_uid)
+        if not learning_path:
+            return False
+
+        modules = self.api_client.get_modules_for_learning_path(learning_path)
+        if not modules:
+            console.print("[red]No modules found for this learning path[/red]")
+            return False
+
+        width = max(2, len(str(len(modules))))
+        success_count = 0
+        for i, module in enumerate(modules, 1):
+            console.print(f"\n[bold]Module {i}/{len(modules)}: {module.get('title')}[/bold]")
+            try:
+                if self.download_module(module['uid'], output_format, output_dir,
+                                        filename_prefix=f"{i:0{width}d}"):
+                    success_count += 1
+            except Exception as e:
+                console.print(f"[red]Failed to download {module['uid']}: {e}[/red]")
+
+        console.print(f"[green]{success_count}/{len(modules)} modules downloaded to {output_dir}[/green]")
+        return success_count > 0
+
+    @staticmethod
+    def _safe_folder_name(name: str) -> str:
+        """Make a title safe to use as a folder name on Windows and other platforms."""
+        import re
+        name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '', name or '').strip(' .')
+        return name[:100].rstrip(' .') or 'untitled'
 
     def download_renewal_collection(self, url: str, output_format: str, output_dir: str,
                                     filename_prefix: Optional[str] = None) -> bool:
