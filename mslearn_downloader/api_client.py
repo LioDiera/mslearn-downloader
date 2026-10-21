@@ -131,11 +131,24 @@ class MSLearnAPIClient:
                 path_slug = parts[idx + 1]
                 # Construct UID (usually learn.{path-slug})
                 uid = f"learn.{path_slug}"
-                return self.get_learning_path_by_uid(uid)
+                data = self.get_catalog(type='learningPaths', uid=uid)
+                if data.get('learningPaths'):
+                    return data['learningPaths'][0]
+                return self._find_learning_path_by_slug(path_slug)
         
         console.print(f"[red]Could not extract learning path UID from URL: {url}[/red]")
         return None
     
+    def _find_learning_path_by_slug(self, slug: str) -> Optional[Dict]:
+        """Find a learning path whose URL slug matches, for paths whose UID differs from the slug."""
+        data = self.get_catalog(type='learningPaths')
+        for lp in data.get('learningPaths', []):
+            lp_slug = lp.get('url', '').split('?')[0].rstrip('/').split('/')[-1]
+            if lp_slug == slug:
+                return lp
+        console.print(f"[red]Learning path not found for slug: {slug}[/red]")
+        return None
+
     @staticmethod
     def is_renewal_url(url: str) -> bool:
         """Return True for certification renewal (study guide) page URLs."""

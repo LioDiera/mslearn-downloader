@@ -2,6 +2,7 @@ import os
 import threading
 import uuid
 import time
+from pathlib import Path
 from flask import Flask, render_template, request, jsonify
 from mslearn_downloader.config import Config
 from mslearn_downloader.api_client import MSLearnAPIClient
@@ -112,11 +113,12 @@ def run_download_job(job_id, items, output_dir, output_format, delete_images):
                         uid, output_format, output_dir, filename_prefix=filename_prefix
                     )
                 else:
-                    success = downloader.download_learning_path(
-                        learning_path_uid=uid,
-                        output_format=output_format,
-                        output_dir=output_dir,
-                        filename_prefix=filename_prefix,
+                    path_dir = output_dir
+                    if total > 1:
+                        folder = f"{filename_prefix} - {downloader._safe_folder_name(title)}"
+                        path_dir = str(Path(output_dir) / folder)
+                    success = downloader.download_learning_path_modules(
+                        uid, output_format, path_dir
                     )
             except Exception as e:
                 print(f"Error downloading {uid}: {e}")
