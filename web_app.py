@@ -26,6 +26,19 @@ def search():
     api_client = MSLearnAPIClient(config)
     
     # Check if query is a URL
+    if api_client.is_exam_url(query):
+        exam = api_client.get_exam_learning_paths(query)
+        if not exam:
+            return jsonify([])
+        return jsonify([{
+            'uid': query.split('?')[0],
+            'type': 'exam',
+            'title': exam['title'],
+            'url': query.split('?')[0],
+            'module_count': len(exam['learning_paths']),
+            'count_label': 'paths',
+        }])
+
     if api_client.is_renewal_url(query):
         collection = api_client.get_renewal_collection(query)
         if not collection:
@@ -84,7 +97,9 @@ def run_download_job(job_id, items, output_dir, output_format, delete_images):
             
             success = False
             try:
-                if item_type == 'collection':
+                if item_type == 'exam':
+                    success = downloader.download_exam(uid, output_format, output_dir)
+                elif item_type == 'collection':
                     success = downloader.download_renewal_collection(
                         uid, output_format, output_dir
                     )

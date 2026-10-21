@@ -61,9 +61,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (item.type === 'learningPath') { badgeClass = 'bg-primary'; typeLabel = 'Path'; }
             else if (item.type === 'course') { badgeClass = 'bg-success'; typeLabel = 'Course'; }
             else if (item.type === 'collection') { badgeClass = 'bg-info text-dark'; typeLabel = 'Collection'; }
+            else if (item.type === 'exam') { badgeClass = 'bg-warning text-dark'; typeLabel = 'Exam'; }
             
             // Duration
-            const duration = item.module_count ? `${item.module_count} modules` :
+            const duration = item.module_count ? `${item.module_count} ${item.count_label || 'modules'}` :
                              item.duration_in_minutes ? `${item.duration_in_minutes} min` : 
                              (item.duration_in_hours ? `${item.duration_in_hours} hr` : '-');
 

@@ -92,6 +92,33 @@ class MSLearnDownloader:
         console.print(f"Location: {course_output_dir}")
         return success_count > 0
 
+    def download_exam(self, url: str, output_format: str, output_dir: str) -> bool:
+        """Download every learning path in a certification exam's study guide, in page order."""
+        exam = self.api_client.get_exam_learning_paths(url)
+        if not exam:
+            return False
+
+        paths = exam['learning_paths']
+        console.print(f"[green]Found {len(paths)} learning paths in: {exam['title']}[/green]")
+
+        width = max(2, len(str(len(paths))))
+        success_count = 0
+        for i, path in enumerate(paths, 1):
+            console.print(f"\n[bold]Processing learning path {i}/{len(paths)}: {path['title']}[/bold]")
+            try:
+                if self.download_learning_path(
+                    learning_path_uid=path['uid'],
+                    output_format=output_format,
+                    output_dir=output_dir,
+                    filename_prefix=f"{i:0{width}d}",
+                ):
+                    success_count += 1
+            except Exception as e:
+                console.print(f"[red]Failed to download {path['uid']}: {e}[/red]")
+
+        console.print(f"\n[green]Exam download complete. {success_count}/{len(paths)} learning paths downloaded successfully.[/green]")
+        return success_count > 0
+
     def download_renewal_collection(self, url: str, output_format: str, output_dir: str,
                                     filename_prefix: Optional[str] = None) -> bool:
         """Download every module in a certification renewal page, in page order."""
@@ -224,6 +251,10 @@ class MSLearnDownloader:
                                filename_prefix: Optional[str] = None) -> bool:
         """Download a learning path by UID or URL."""
         
+        # Check if it's a certification exam page URL
+        if learning_path_url and self.api_client.is_exam_url(learning_path_url):
+            return self.download_exam(learning_path_url, output_format, output_dir)
+
         # Check if it's a certification renewal collection URL
         if learning_path_url and self.api_client.is_renewal_url(learning_path_url):
             return self.download_renewal_collection(

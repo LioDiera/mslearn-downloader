@@ -141,6 +141,48 @@ class MSLearnAPIClient:
         """Return True for certification renewal (study guide) page URLs."""
         return bool(re.search(r'/credentials/certifications/[^/]+/renew', url or ''))
 
+    @staticmethod
+    def is_exam_url(url: str) -> bool:
+        """Return True for certification exam page URLs."""
+        return bool(re.search(r'/credentials/certifications/exams/[^/?#]+', url or ''))
+
+    def get_exam_learning_paths(self, url: str) -> Optional[Dict]:
+        """Resolve an exam page into the learning paths of its study guide."""
+        match = re.search(r'/credentials/certifications/exams/([^/?#]+)', url or '')
+        if not match:
+            return None
+        exam_slug = match.group(1)
+        exam_uid = f"exam.{exam_slug}"
+
+        base = self.base_url.split('/api/')[0]
+        try:
+            data = self._make_request(
+                f"{base}/api/lists/studyguide/exam/{exam_uid}", {'locale': self.locale})
+        except Exception as e:
+            console.print(f"[red]Failed to fetch exam study guide for {exam_uid}: {e}[/red]")
+            return None
+
+        paths = []
+        for entry in data.get('items', []):
+            if entry.get('type') != 'path':
+                continue
+            item = entry.get('data') or {}
+            uid = entry.get('id') or item.get('uid')
+            if uid:
+                paths.append({'uid': uid, 'title': item.get('title', uid)})
+        if not paths:
+            console.print(f"[red]No learning paths found in the study guide for {exam_uid}[/red]")
+            return None
+
+        title = exam_uid
+        try:
+            exams = self.get_catalog(type='exams', uid=exam_uid).get('exams', [])
+            if exams:
+                title = f"{exam_slug.upper()} - {exams[0].get('title', exam_uid)}"
+        except Exception:
+            pass
+        return {'uid': exam_uid, 'title': title, 'learning_paths': paths}
+
     def get_renewal_collection(self, url: str) -> Optional[Dict]:
         """Resolve a certification renewal page into its list of modules.
 
