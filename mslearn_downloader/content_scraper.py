@@ -257,6 +257,13 @@ class ContentScraper:
             for element in content.select(selector):
                 element.decompose()
         
+        # Remove the "Ask Anton" promotional tip callouts
+        for callout in content.select('div.TIP, div.tip, div.alert'):
+            if not callout.parent:
+                continue
+            if 'Ask Anton' in callout.get_text(' ', strip=True):
+                callout.decompose()
+
         # Remove script and style tags
         for tag in content.find_all(['script', 'style']):
             tag.decompose()
