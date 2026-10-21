@@ -92,6 +92,31 @@ class MSLearnDownloader:
         console.print(f"Location: {course_output_dir}")
         return success_count > 0
 
+    def download_renewal_collection(self, url: str, output_format: str, output_dir: str,
+                                    filename_prefix: Optional[str] = None) -> bool:
+        """Download every module in a certification renewal page, in page order."""
+        collection = self.api_client.get_renewal_collection(url)
+        if not collection:
+            return False
+
+        modules = collection['modules']
+        console.print(f"[green]Found {len(modules)} modules in: {collection['title']}[/green]")
+
+        width = max(2, len(str(len(modules))))
+        success_count = 0
+        for i, module in enumerate(modules, 1):
+            console.print(f"\n[bold]Processing module {i}/{len(modules)}: {module['title']}[/bold]")
+            number = f"{i:0{width}d}"
+            prefix = f"{filename_prefix}.{number}" if filename_prefix else number
+            try:
+                if self.download_module(module['uid'], output_format, output_dir, filename_prefix=prefix):
+                    success_count += 1
+            except Exception as e:
+                console.print(f"[red]Failed to download {module['uid']}: {e}[/red]")
+
+        console.print(f"\n[green]Collection download complete. {success_count}/{len(modules)} modules downloaded successfully.[/green]")
+        return success_count > 0
+
     def download_module(self, module_uid: str, output_format: str, output_dir: str,
                         filename_prefix: Optional[str] = None) -> bool:
         """Download a single module by UID."""
@@ -199,6 +224,12 @@ class MSLearnDownloader:
                                filename_prefix: Optional[str] = None) -> bool:
         """Download a learning path by UID or URL."""
         
+        # Check if it's a certification renewal collection URL
+        if learning_path_url and self.api_client.is_renewal_url(learning_path_url):
+            return self.download_renewal_collection(
+                learning_path_url, output_format, output_dir, filename_prefix
+            )
+
         # Check if it's a course URL
         if learning_path_url and '/courses/' in learning_path_url:
             return self.download_course(

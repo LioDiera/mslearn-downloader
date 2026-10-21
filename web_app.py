@@ -26,6 +26,18 @@ def search():
     api_client = MSLearnAPIClient(config)
     
     # Check if query is a URL
+    if api_client.is_renewal_url(query):
+        collection = api_client.get_renewal_collection(query)
+        if not collection:
+            return jsonify([])
+        return jsonify([{
+            'uid': query.split('?')[0],
+            'type': 'collection',
+            'title': collection['title'],
+            'url': query.split('?')[0],
+            'module_count': len(collection['modules']),
+        }])
+
     if 'learn.microsoft.com' in query and ('/paths/' in query or '/courses/' in query or '/modules/' in query):
         # Try to resolve URL to a single item
         item = api_client.get_learning_path_from_url(query)
@@ -72,7 +84,11 @@ def run_download_job(job_id, items, output_dir, output_format, delete_images):
             
             success = False
             try:
-                if item_type == 'course':
+                if item_type == 'collection':
+                    success = downloader.download_renewal_collection(
+                        uid, output_format, output_dir, filename_prefix=filename_prefix
+                    )
+                elif item_type == 'course':
                     success = downloader.download_course_by_uid(
                         uid, output_format, output_dir, filename_prefix=filename_prefix
                     )

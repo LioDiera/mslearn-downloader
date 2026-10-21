@@ -335,6 +335,9 @@ This is an unofficial tool. Content downloaded from Microsoft Learn is subject t
 Maintained by [LioDiera](https://github.com/LioDiera). Notable changes relative to the upstream project:
 
 - Fixed content scraping returning empty pages (request HTML instead of JSON via the `Accept` header).
+- Fixed broken hyperlinks in exports by resolving relative links to absolute `https://learn.microsoft.com/...` URLs.
+- Added support for certification renewal "collection" pages (`/credentials/certifications/<cert>/renew/`): paste the URL into the web UI search or pass it to `--url`, and every module in its study guide is downloaded, in page order.
+- Web UI selections persist across searches, show their selection order, and PDFs are prefixed with that number.
 - Fixed character encoding so em/en dashes, curly apostrophes/quotes, and other UTF-8 characters render correctly instead of mojibake.
 - Fixed missing spaces around italics and other inline formatting in quiz question/answer text.
 - Added the missing `templates/index.html` so the web UI loads.

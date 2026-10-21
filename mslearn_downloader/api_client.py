@@ -136,6 +136,63 @@ class MSLearnAPIClient:
         console.print(f"[red]Could not extract learning path UID from URL: {url}[/red]")
         return None
     
+    @staticmethod
+    def is_renewal_url(url: str) -> bool:
+        """Return True for certification renewal (study guide) page URLs."""
+        return bool(re.search(r'/credentials/certifications/[^/]+/renew', url or ''))
+
+    def get_renewal_collection(self, url: str) -> Optional[Dict]:
+        """Resolve a certification renewal page into its list of modules.
+
+        The page itself is rendered client-side, but it embeds the assessment id
+        that the renewal API uses to return the study guide.
+        """
+        page_url = url.split('?')[0].split('#')[0]
+        html = self.fetch_content(page_url)
+        match = re.search(
+            r'"certificationUid"\s*:\s*"([^"]+)"\s*,\s*"assessmentId"\s*:\s*"([^"]+)"', html or '')
+        if not match:
+            console.print(f"[red]Could not find renewal assessment details on: {page_url}[/red]")
+            return None
+        certification_uid, assessment_id = match.groups()
+
+        base = self.base_url.split('/api/')[0]
+        try:
+            data = self._make_request(
+                f"{base}/api/certification/{assessment_id}/renewal",
+                {'locale': self.locale, 'SkipVerification': 'false',
+                 'SnapshotVersion': 'live', 'ShowAllQuest': 'true'},
+            )
+        except Exception as e:
+            console.print(f"[red]Failed to fetch renewal study guide: {e}[/red]")
+            return None
+
+        study_guide = data.get('studyGuide') or {}
+        entries = study_guide.get('items', []) if isinstance(study_guide, dict) else study_guide
+        modules = []
+        for entry in entries:
+            if not isinstance(entry, dict) or entry.get('type', 'module') != 'module':
+                continue
+            item = entry.get('data') or entry
+            if item.get('uid') and item.get('url'):
+                modules.append({
+                    'uid': item['uid'],
+                    'title': item.get('title', item['uid']),
+                    'url': urljoin(f"{base}/{self.locale}", item['url']),
+                })
+        if not modules:
+            console.print("[red]No modules found in the renewal study guide[/red]")
+            return None
+
+        title = certification_uid
+        try:
+            certs = self.get_catalog(type='certifications', uid=certification_uid).get('certifications', [])
+            if certs:
+                title = certs[0].get('title', title)
+        except Exception:
+            pass
+        return {'uid': certification_uid, 'title': f"Renewal - {title}", 'modules': modules}
+
     def get_modules_for_learning_path(self, learning_path: Dict) -> List[Dict]:
         """Get all modules associated with a learning path."""
         module_uids = learning_path.get('modules', [])

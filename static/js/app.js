@@ -60,9 +60,11 @@ document.addEventListener('DOMContentLoaded', function() {
             let typeLabel = item.type;
             if (item.type === 'learningPath') { badgeClass = 'bg-primary'; typeLabel = 'Path'; }
             else if (item.type === 'course') { badgeClass = 'bg-success'; typeLabel = 'Course'; }
+            else if (item.type === 'collection') { badgeClass = 'bg-info text-dark'; typeLabel = 'Collection'; }
             
             // Duration
-            const duration = item.duration_in_minutes ? `${item.duration_in_minutes} min` : 
+            const duration = item.module_count ? `${item.module_count} modules` :
+                             item.duration_in_minutes ? `${item.duration_in_minutes} min` : 
                              (item.duration_in_hours ? `${item.duration_in_hours} hr` : '-');
 
             row.innerHTML = `
