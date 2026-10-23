@@ -151,8 +151,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Download Handler - Open Modal
+    const formatSelect = document.getElementById('outputFormatSelect');
+    const splitHtmlWrapper = document.getElementById('splitHtmlWrapper');
+    function updateSplitHtmlVisibility() {
+        const showSplit = formatSelect.value === 'html';
+        splitHtmlWrapper.classList.toggle('d-none', !showSplit);
+        if (!showSplit) document.getElementById('splitHtmlCheck').checked = false;
+    }
+    formatSelect.addEventListener('change', updateSplitHtmlVisibility);
+
     downloadBtn.addEventListener('click', function() {
         if (selectedItems.size === 0) return;
+
+        updateSplitHtmlVisibility();
 
         // Pre-fill folder name with search term or first item title
         const searchTerm = searchInput.value.trim();
@@ -175,6 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const folderName = document.getElementById('downloadPathInput').value.trim() || 'download';
         const outputFormat = document.getElementById('outputFormatSelect').value;
         const deleteImages = document.getElementById('deleteImagesCheck').checked;
+        const splitHtml = document.getElementById('splitHtmlCheck').checked;
 
         // Switch to progress view
         document.getElementById('downloadConfigStep').classList.add('d-none');
@@ -189,7 +201,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     items: itemsToDownload,
                     folder_name: folderName,
                     output_format: outputFormat,
-                    delete_images: deleteImages
+                    delete_images: deleteImages,
+                    split_html: splitHtml
                 })
             });
             

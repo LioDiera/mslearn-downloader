@@ -117,31 +117,61 @@ class MSLearnDownloader:
         console.print(f"\n[green]Exam download complete. {success_count}/{len(paths)} learning paths downloaded successfully.[/green]")
         return success_count > 0
 
+    def _split_formats(self, output_format: str):
+        """Return (combined_html_format, per_module_formats).
+
+        HTML is a single combined file unless output.html_split_modules is set;
+        every other format is always written per module.
+        """
+        formats = output_format.split(',') if output_format != 'all' else ['html', 'markdown', 'pdf']
+        formats = [f.strip() for f in formats if f.strip()]
+        if 'html' in formats and not self.config.get('output.html_split_modules', False):
+            rest = [f for f in formats if f != 'html']
+            return 'html', (','.join(rest) or None)
+        return None, ','.join(formats)
+
     def download_learning_path_modules(self, learning_path_uid: str, output_format: str,
-                                       output_dir: str) -> bool:
-        """Download each module of a learning path as its own numbered file in output_dir."""
+                                       output_dir: str, filename_prefix: Optional[str] = None) -> bool:
+        """Download a learning path as one numbered file per module in output_dir.
+
+        HTML is written as a single combined file (named with filename_prefix) unless
+        output.html_split_modules is enabled.
+        """
+        combined_fmt, split_fmt = self._split_formats(output_format)
+        success = False
+
+        if combined_fmt:
+            success = bool(self.download_learning_path(
+                learning_path_uid=learning_path_uid,
+                output_format=combined_fmt,
+                output_dir=output_dir,
+                filename_prefix=filename_prefix,
+            ))
+        if not split_fmt:
+            return success
+
         learning_path = self.api_client.get_learning_path_by_uid(learning_path_uid)
         if not learning_path:
-            return False
+            return success
 
         modules = self.api_client.get_modules_for_learning_path(learning_path)
         if not modules:
             console.print("[red]No modules found for this learning path[/red]")
-            return False
+            return success
 
         width = max(2, len(str(len(modules))))
         success_count = 0
         for i, module in enumerate(modules, 1):
             console.print(f"\n[bold]Module {i}/{len(modules)}: {module.get('title')}[/bold]")
             try:
-                if self.download_module(module['uid'], output_format, output_dir,
+                if self.download_module(module['uid'], split_fmt, output_dir,
                                         filename_prefix=f"{i:0{width}d}"):
                     success_count += 1
             except Exception as e:
                 console.print(f"[red]Failed to download {module['uid']}: {e}[/red]")
 
         console.print(f"[green]{success_count}/{len(modules)} modules downloaded to {output_dir}[/green]")
-        return success_count > 0
+        return success or success_count > 0
 
     @staticmethod
     def _safe_folder_name(name: str) -> str:
@@ -160,20 +190,74 @@ class MSLearnDownloader:
         modules = collection['modules']
         console.print(f"[green]Found {len(modules)} modules in: {collection['title']}[/green]")
 
+        combined_fmt, split_fmt = self._split_formats(output_format)
+        combined_ok = False
+        if combined_fmt:
+            combined_ok = self._download_modules_combined(
+                collection, [m['uid'] for m in modules], combined_fmt, output_dir
+            )
+        if not split_fmt:
+            return combined_ok
+
         width = max(2, len(str(len(modules))))
         success_count = 0
         for i, module in enumerate(modules, 1):
             console.print(f"\n[bold]Processing module {i}/{len(modules)}: {module['title']}[/bold]")
-            number = f"{i:0{width}d}"
-            prefix = number
+            prefix = f"{i:0{width}d}"
             try:
-                if self.download_module(module['uid'], output_format, output_dir, filename_prefix=prefix):
+                if self.download_module(module['uid'], split_fmt, output_dir, filename_prefix=prefix):
                     success_count += 1
             except Exception as e:
                 console.print(f"[red]Failed to download {module['uid']}: {e}[/red]")
 
         console.print(f"\n[green]Collection download complete. {success_count}/{len(modules)} modules downloaded successfully.[/green]")
-        return success_count > 0
+        return combined_ok or success_count > 0
+
+    def _download_modules_combined(self, info: Dict, module_uids: list, output_format: str,
+                                   output_dir: str) -> bool:
+        """Scrape several modules and save them together as one document."""
+        modules_content = []
+        all_images = []
+        module_infos = []
+        for uid in module_uids:
+            scraped = self._scrape_module(uid)
+            if not scraped:
+                continue
+            module, module_data = scraped
+            module_infos.append(module)
+            modules_content.append(module_data)
+            all_images.extend(module_data.get('images', []))
+
+        if not modules_content:
+            return False
+
+        self._process_images(all_images, modules_content, output_dir)
+        combined = {
+            'uid': info.get('uid'),
+            'title': info.get('title'),
+            'summary': info.get('summary', ''),
+            'url': info.get('url'),
+            'modules': module_infos,
+        }
+        self._save_output(combined, modules_content, output_format, output_dir)
+        return True
+
+    def _scrape_module(self, module_uid: str):
+        """Fetch and scrape one module. Returns (module, scraped_data) or None."""
+        data = self.api_client.get_catalog(type='modules', uid=module_uid)
+        modules = data.get('modules', [])
+        if not modules:
+            console.print(f"[red]Module not found: {module_uid}[/red]")
+            return None
+
+        module = modules[0]
+        console.print(f"[green]Found module: {module.get('title')}[/green]")
+        units = self.api_client.get_units_for_modules([module]).get(module_uid, [])
+        if not units:
+            console.print("[red]No units found for this module[/red]")
+            return None
+
+        return module, self.content_scraper.scrape_module_content(module, units)
 
     def download_module(self, module_uid: str, output_format: str, output_dir: str,
                         filename_prefix: Optional[str] = None) -> bool:
@@ -253,11 +337,11 @@ class MSLearnDownloader:
         
         if 'html' in formats:
             formatter = HTMLFormatter(self.config)
-            formatter.format(learning_path, modules_content, output_path)
+            formatter.format(learning_path, modules_content, output_path, filename_prefix=filename_prefix)
             
         if 'markdown' in formats or 'md' in formats:
             formatter = MarkdownFormatter(self.config)
-            formatter.format(learning_path, modules_content, output_path)
+            formatter.format(learning_path, modules_content, output_path, filename_prefix=filename_prefix)
             
         if 'pdf' in formats:
             formatter = PDFFormatter(self.config)

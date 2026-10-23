@@ -1,7 +1,7 @@
 """Output formatters for different file formats."""
 
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 from datetime import datetime
 from rich.console import Console
 
@@ -23,15 +23,20 @@ class BaseFormatter:
 class HTMLFormatter(BaseFormatter):
     """Format content as HTML."""
     
-    def format(self, learning_path: Dict, modules_content: List[Dict], output_path: Path):
+    def format(self, learning_path: Dict, modules_content: List[Dict], output_path: Path,
+               filename_prefix: Optional[str] = None):
         """Generate HTML output."""
         console.print("[cyan]Generating HTML output...[/cyan]")
         
         output_path = Path(output_path)
         output_path.mkdir(parents=True, exist_ok=True)
         
-        # Generate main HTML file
-        html_file = output_path / "index.html"
+        # Prefixed (multi-item) downloads get unique names so they don't overwrite each other
+        if filename_prefix:
+            safe_title = MarkdownFormatter._sanitize_filename(None, learning_path.get('title', 'content'))
+            html_file = output_path / f"{filename_prefix} - {safe_title}.html"
+        else:
+            html_file = output_path / "index.html"
         
         html_content = self._generate_html(learning_path, modules_content)
         
@@ -230,7 +235,8 @@ class HTMLFormatter(BaseFormatter):
 class MarkdownFormatter(BaseFormatter):
     """Format content as Markdown."""
     
-    def format(self, learning_path: Dict, modules_content: List[Dict], output_path: Path):
+    def format(self, learning_path: Dict, modules_content: List[Dict], output_path: Path,
+               filename_prefix: Optional[str] = None):
         """Generate Markdown output."""
         console.print("[cyan]Generating Markdown output...[/cyan]")
         
@@ -238,7 +244,9 @@ class MarkdownFormatter(BaseFormatter):
         output_path.mkdir(parents=True, exist_ok=True)
         
         # Generate main markdown file, named after the content title
-        md_file = output_path / f"{self._sanitize_filename(learning_path.get('title', 'content'))}.md"
+        safe_title = self._sanitize_filename(learning_path.get('title', 'content'))
+        md_name = f"{filename_prefix} - {safe_title}" if filename_prefix else safe_title
+        md_file = output_path / f"{md_name}.md"
         
         md_content = self._generate_markdown(learning_path, modules_content)
         

@@ -264,6 +264,12 @@ class ContentScraper:
             if 'Ask Anton' in callout.get_text(' ', strip=True):
                 callout.decompose()
 
+        # Some units ship the body inside a hidden wrapper that is revealed by
+        # JavaScript; make it visible so it isn't dropped from HTML/PDF output.
+        for wrapper in content.select('#module-unit-content'):
+            wrapper.attrs.pop('hidden', None)
+            wrapper.attrs.pop('aria-hidden', None)
+
         # Remove script and style tags
         for tag in content.find_all(['script', 'style']):
             tag.decompose()

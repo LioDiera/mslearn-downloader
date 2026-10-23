@@ -19,6 +19,7 @@ output:
   create_toc: true
   include_metadata: true
   compress_images: false
+  html_split_modules: false  # false = one combined HTML file; true = one HTML file per module
   
 pdf:
   include_bookmarks: true

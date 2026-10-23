@@ -70,7 +70,7 @@ def search():
     results = api_client.search_catalog(query, types=['learningPaths', 'courses', 'modules'])
     return jsonify(results)
 
-def run_download_job(job_id, items, output_dir, output_format, delete_images):
+def run_download_job(job_id, items, output_dir, output_format, delete_images, split_html=False):
     """Background worker for downloading items."""
     job = jobs[job_id]
     job['status'] = 'running'
@@ -78,6 +78,7 @@ def run_download_job(job_id, items, output_dir, output_format, delete_images):
     config = Config()
     if delete_images:
         config.set('cleanup.delete_images', True)
+    config.set('output.html_split_modules', bool(split_html))
         
     downloader = MSLearnDownloader(config)
     
@@ -118,7 +119,7 @@ def run_download_job(job_id, items, output_dir, output_format, delete_images):
                         folder = f"{filename_prefix} - {downloader._safe_folder_name(title)}"
                         path_dir = str(Path(output_dir) / folder)
                     success = downloader.download_learning_path_modules(
-                        uid, output_format, path_dir
+                        uid, output_format, path_dir, filename_prefix=filename_prefix
                     )
             except Exception as e:
                 print(f"Error downloading {uid}: {e}")
@@ -141,6 +142,7 @@ def download():
     folder_name = data.get('folder_name', 'download')
     output_format = data.get('output_format', 'pdf')
     delete_images = data.get('delete_images', False)
+    split_html = data.get('split_html', False)
     
     if not items:
         return jsonify({'error': 'No items selected'}), 400
@@ -150,6 +152,7 @@ def download():
     # Determine output directory
     config = Config()
     base_output_dir = config.get('storage.output_dir', './downloads')
+    folder_name = MSLearnDownloader._safe_folder_name(folder_name) if folder_name else 'download'
     output_dir = os.path.join(base_output_dir, folder_name)
     
     # Create job entry
@@ -162,7 +165,7 @@ def download():
     }
     
     # Start background thread
-    thread = threading.Thread(target=run_download_job, args=(job_id, items, output_dir, output_format, delete_images))
+    thread = threading.Thread(target=run_download_job, args=(job_id, items, output_dir, output_format, delete_images, split_html))
     thread.start()
     
     return jsonify({'job_id': job_id})

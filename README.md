@@ -183,6 +183,7 @@ Options:
   -c, --config TEXT    Configuration file path (default: config.yaml)
   --no-images          Skip downloading images
   --delete-images      Delete images folder after PDF generation
+  --split-html         Write HTML as one file per module (default: one combined file)
   --yes, -y            Skip confirmation prompts
   --version           Show version
   --help              Show help message
@@ -344,6 +345,7 @@ Maintained by [LioDiera](https://github.com/LioDiera). Notable changes relative 
 - Added the missing `templates/index.html` so the web UI loads.
 - Fixed the formatter calls and removed duplicate/unreachable code in the downloader.
 - Made `--delete-images` actually clean up the images folder after generation.
+- HTML output is one combined file per path/collection by default. Use the "Split HTML" checkbox in the web UI, `--split-html`, or `output.html_split_modules: true` in `config.yaml` for one HTML file per module. PDF and Markdown always split per module for collections, exams and web UI paths.
 - Named the Markdown output after the content title instead of `README.md`.
 - Synced `setup.py` dependencies, gated Flask debug mode behind `FLASK_DEBUG`, and other cleanup.
 

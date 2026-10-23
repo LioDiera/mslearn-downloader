@@ -26,11 +26,12 @@ console = Console()
               help='Configuration file path (default: config.yaml)')
 @click.option('--no-images', is_flag=True, help='Skip downloading images')
 @click.option('--delete-images', is_flag=True, help='Delete images folder after PDF generation')
+@click.option('--split-html', is_flag=True, help='Write HTML as one file per module instead of one combined file')
 @click.option('--search', '-s', help='Search for learning paths by keyword')
 @click.option('--download-all', is_flag=True, help='Download all found learning paths (use with --search)')
 @click.option('--yes', '-y', is_flag=True, help='Skip confirmation prompts')
 @click.version_option(version='1.0.0')
-def main(url, uid, output_format, output_dir, config_file, no_images, delete_images, search, download_all, yes):
+def main(url, uid, output_format, output_dir, config_file, no_images, delete_images, split_html, search, download_all, yes):
     """
     MS Learn Downloader - Download learning paths from Microsoft Learn.
     
@@ -76,6 +77,8 @@ def main(url, uid, output_format, output_dir, config_file, no_images, delete_ima
             config.set('download.images', False)
         if delete_images:
             config.set('cleanup.delete_images', True)
+        if split_html:
+            config.set('output.html_split_modules', True)
         
     except Exception as e:
         console.print(f"[red]Error loading configuration: {e}[/red]")
