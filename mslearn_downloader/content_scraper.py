@@ -251,7 +251,8 @@ class ContentScraper:
             '.alert-banner',
             '[data-bi-name="feedback"]',
             '.margin-note',
-            '.is-invisible'
+            '.is-invisible',
+            '.xp-tag'
         ]
         
         for selector in unwanted_selectors:
