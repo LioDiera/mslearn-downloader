@@ -134,6 +134,7 @@ class ContentScraper:
         if main_content:
             self._absolutize_links(main_content, unit_url)
             self._linkify_embeds(main_content, unit_url)
+            self._add_quiz_link(main_content, unit_url)
 
         images = self._extract_images(main_content, unit_url) if main_content else []
         html_fragment = str(main_content) if main_content else ''
@@ -309,6 +310,22 @@ class ContentScraper:
             p.append(a)
             target = iframe.parent if iframe.parent and 'embeddedvideo' in (iframe.parent.get('class') or []) else iframe
             target.replace_with(p)
+
+    def _add_quiz_link(self, content: BeautifulSoup, unit_url: str):
+        """Add a link to the online unit after a knowledge check or assessment."""
+        quiz = content.select_one('.formatted-quiz')
+        if not quiz:
+            return
+        builder = BeautifulSoup('', 'lxml')
+        p = builder.new_tag('p')
+        p['class'] = 'quiz-link'
+        strong = builder.new_tag('strong')
+        strong.string = 'Complete this assessment online: '
+        a = builder.new_tag('a', href=unit_url)
+        a.string = unit_url
+        p.append(strong)
+        p.append(a)
+        quiz.append(p)
 
     def _extract_images(self, soup: BeautifulSoup, base_url: str) -> List[Dict]:
         """Extract all images from the content."""
