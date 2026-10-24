@@ -337,6 +337,7 @@ Maintained by [LioDiera](https://github.com/LioDiera). Notable changes relative 
 
 - Fixed content scraping returning empty pages (request HTML instead of JSON via the `Accept` header).
 - Fixed broken hyperlinks in exports by resolving relative links to absolute `https://learn.microsoft.com/...` URLs.
+- Note, Important, Tip and Warning callouts are styled distinctly in HTML/PDF (blue, orange, green, red) and rendered as labelled blockquotes in Markdown.
 - Added support for certification renewal "collection" pages (`/credentials/certifications/<cert>/renew/`): paste the URL into the web UI search or pass it to `--url`, and every module in its study guide is downloaded, in page order.
 - Added support for certification exam pages (`/credentials/certifications/exams/<exam>/`): each learning path in the exam's study guide gets its own numbered subfolder (`01 - <path title>/`) containing one numbered file per module (`01 - <module>.pdf`).
 - Web UI selections persist across searches, show their selection order, and PDFs are prefixed with that number.

@@ -204,6 +204,29 @@ class HTMLFormatter(BaseFormatter):
         }
         .unit h3 { margin-top: 0; color: #333; }
         img { max-width: 100%; height: auto; }
+        div.NOTE, div.IMPORTANT, div.TIP, div.WARNING, div.CAUTION {
+            margin: 1em 0;
+            padding: 0.6em 1em;
+            border-left: 5px solid #0078d4;
+            background: #eff6fc;
+            break-inside: avoid;
+        }
+        div.NOTE > p:first-child, div.IMPORTANT > p:first-child, div.TIP > p:first-child,
+        div.WARNING > p:first-child, div.CAUTION > p:first-child {
+            margin: 0 0 0.3em 0;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 0.85em;
+            letter-spacing: 0.03em;
+        }
+        div.NOTE { border-left-color: #0078d4; background: #eff6fc; }
+        div.NOTE > p:first-child { color: #0063b1; }
+        div.IMPORTANT { border-left-color: #d83b01; background: #fdf3ee; }
+        div.IMPORTANT > p:first-child { color: #a62d01; }
+        div.TIP { border-left-color: #107c10; background: #f1f9f1; }
+        div.TIP > p:first-child { color: #0b5a0b; }
+        div.WARNING, div.CAUTION { border-left-color: #c50f1f; background: #fdf0f1; }
+        div.WARNING > p:first-child, div.CAUTION > p:first-child { color: #a80000; }
         code {
             background: #f4f4f4;
             padding: 0.2rem 0.4rem;

@@ -133,6 +133,7 @@ class ContentScraper:
 
         if main_content:
             self._absolutize_links(main_content, unit_url)
+            self._linkify_embeds(main_content, unit_url)
 
         images = self._extract_images(main_content, unit_url) if main_content else []
         html_fragment = str(main_content) if main_content else ''
@@ -288,6 +289,26 @@ class ContentScraper:
                 continue
             a['href'] = urljoin(base_url, href)
 
+    def _linkify_embeds(self, content: BeautifulSoup, base_url: str):
+        """Replace iframe embeds (e.g. videos) with a visible link.
+
+        Iframes render as blank space in PDFs and offline HTML, which hides the
+        only reference to the video.
+        """
+        for iframe in content.find_all('iframe'):
+            src = (iframe.get('src') or '').strip()
+            if not src:
+                iframe.decompose()
+                continue
+            src = urljoin(base_url, src)
+            title = iframe.get('title') or 'Watch the video'
+            p = BeautifulSoup('', 'lxml').new_tag('p')
+            a = BeautifulSoup('', 'lxml').new_tag('a', href=src)
+            a.string = f"{title}: {src}" if iframe.get('title') else f"Watch the video: {src}"
+            p.append(a)
+            target = iframe.parent if iframe.parent and 'embeddedvideo' in (iframe.parent.get('class') or []) else iframe
+            target.replace_with(p)
+
     def _extract_images(self, soup: BeautifulSoup, base_url: str) -> List[Dict]:
         """Extract all images from the content."""
         images = []
@@ -331,6 +352,19 @@ class ContentScraper:
     def convert_to_markdown(self, html_content: str) -> str:
         """Convert HTML content to Markdown."""
         from markdownify import markdownify as md
+
+        # Render callouts (Note/Important/Tip/...) as blockquotes with a bold label
+        soup = BeautifulSoup(html_content, 'lxml')
+        for callout in soup.select('div.NOTE, div.IMPORTANT, div.TIP, div.WARNING, div.CAUTION'):
+            label = callout.select_one('p')
+            if label:
+                label_text = label.get_text(strip=True)
+                strong = soup.new_tag('strong')
+                strong.string = f"{label_text}:"
+                label.clear()
+                label.append(strong)
+            callout.name = 'blockquote'
+        html_content = str(soup)
         
         # Convert HTML to Markdown
         markdown = md(html_content, heading_style="ATX", code_language="python")
